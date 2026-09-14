@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#111827" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Mis Gastos" />
+  <link rel="apple-touch-icon" href="icon-180.png" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="stylesheet" href="styles.css" />
+  <title>Mis Gastos</title>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div>
+        <div class="eyebrow">CONTROL MENSUAL</div>
+        <h1>Mis Gastos</h1>
+      </div>
+      <button class="icon-btn" id="settingsBtn" aria-label="Ajustes">⚙️</button>
+    </header>
+
+    <main>
+      <section class="card hero">
+        <div class="month-row">
+          <button class="ghost" id="prevMonth">‹</button>
+          <div class="month-title" id="monthTitle"></div>
+          <button class="ghost" id="nextMonth">›</button>
+        </div>
+
+        <div class="hero-grid">
+          <div>
+            <div class="label">Presupuesto</div>
+            <div class="value" id="budgetValue">0 €</div>
+          </div>
+          <div>
+            <div class="label">Gastado</div>
+            <div class="value danger" id="spentValue">0 €</div>
+          </div>
+          <div>
+            <div class="label">Disponible</div>
+            <div class="value success" id="remainingValue">0 €</div>
+          </div>
+        </div>
+
+        <div class="progress-wrap">
+          <div class="progress"><div id="progressBar"></div></div>
+          <div class="progress-meta">
+            <span id="progressText">0% utilizado</span>
+            <span id="dailyBudget">0 €/día</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="quick-actions">
+        <button class="primary" id="addExpenseBtn">＋ Añadir gasto</button>
+        <button class="secondary" id="addIncomeBtn">＋ Ingreso</button>
+      </section>
+
+      <section class="card">
+        <div class="section-head">
+          <h2>Por categorías</h2>
+          <span class="muted" id="categoryCount"></span>
+        </div>
+        <div id="categoryList" class="category-list"></div>
+      </section>
+
+      <section class="card">
+        <div class="section-head">
+          <h2>Últimos movimientos</h2>
+          <button class="text-btn" id="viewAllBtn">Ver todos</button>
+        </div>
+        <div id="recentList" class="movement-list"></div>
+      </section>
+
+      <section class="card">
+        <div class="section-head">
+          <h2>Gastos recurrentes</h2>
+          <button class="text-btn" id="addRecurringBtn">Añadir</button>
+        </div>
+        <div id="recurringList" class="movement-list"></div>
+      </section>
+    </main>
+
+    <nav class="bottom-nav">
+      <button class="nav-item active" data-view="home">⌂<span>Inicio</span></button>
+      <button class="nav-item" data-view="movements">☷<span>Movimientos</span></button>
+      <button class="nav-item" data-view="stats">◔<span>Estadísticas</span></button>
+      <button class="nav-item" data-view="settings">⚙<span>Ajustes</span></button>
+    </nav>
+  </div>
+
+  <dialog id="expenseDialog">
+    <form method="dialog" id="expenseForm" class="sheet">
+      <div class="sheet-head">
+        <h3 id="expenseDialogTitle">Añadir gasto</h3>
+        <button class="icon-btn" value="cancel">✕</button>
+      </div>
+
+      <label>Importe
+        <input type="number" id="expenseAmount" step="0.01" min="0" inputmode="decimal" required />
+      </label>
+
+      <label>Concepto
+        <input type="text" id="expenseName" placeholder="Ej. Mercadona" required />
+      </label>
+
+      <label>Categoría
+        <select id="expenseCategory"></select>
+      </label>
+
+      <label>Fecha
+        <input type="date" id="expenseDate" required />
+      </label>
+
+      <label>Método de pago
+        <select id="expenseMethod">
+          <option>Tarjeta</option>
+          <option>Efectivo</option>
+          <option>Bizum</option>
+          <option>Transferencia</option>
+          <option>Otro</option>
+        </select>
+      </label>
+
+      <label>Notas
+        <textarea id="expenseNotes" rows="2" placeholder="Opcional"></textarea>
+      </label>
+
+      <div class="sheet-actions">
+        <button class="secondary" value="cancel">Cancelar</button>
+        <button class="primary" id="saveExpenseBtn" value="default">Guardar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="incomeDialog">
+    <form method="dialog" id="incomeForm" class="sheet">
+      <div class="sheet-head">
+        <h3>Añadir ingreso</h3>
+        <button class="icon-btn" value="cancel">✕</button>
+      </div>
+      <label>Importe
+        <input type="number" id="incomeAmount" step="0.01" min="0" inputmode="decimal" required />
+      </label>
+      <label>Concepto
+        <input type="text" id="incomeName" placeholder="Ej. Nómina" required />
+      </label>
+      <label>Fecha
+        <input type="date" id="incomeDate" required />
+      </label>
+      <div class="sheet-actions">
+        <button class="secondary" value="cancel">Cancelar</button>
+        <button class="primary" value="default">Guardar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="recurringDialog">
+    <form method="dialog" id="recurringForm" class="sheet">
+      <div class="sheet-head">
+        <h3>Añadir gasto recurrente</h3>
+        <button class="icon-btn" value="cancel">✕</button>
+      </div>
+      <label>Concepto
+        <input type="text" id="recurringName" placeholder="Ej. Spotify" required />
+      </label>
+      <label>Importe mensual
+        <input type="number" id="recurringAmount" step="0.01" min="0" inputmode="decimal" required />
+      </label>
+      <label>Categoría
+        <select id="recurringCategory"></select>
+      </label>
+      <label>Día de cobro
+        <input type="number" id="recurringDay" min="1" max="31" value="1" required />
+      </label>
+      <div class="sheet-actions">
+        <button class="secondary" value="cancel">Cancelar</button>
+        <button class="primary" value="default">Guardar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="settingsDialog">
+    <form method="dialog" id="settingsForm" class="sheet">
+      <div class="sheet-head">
+        <h3>Ajustes</h3>
+        <button class="icon-btn" value="cancel">✕</button>
+      </div>
+      <label>Presupuesto mensual
+        <input type="number" id="budgetInput" step="0.01" min="0" inputmode="decimal" />
+      </label>
+
+      <div class="settings-grid">
+        <button type="button" class="secondary" id="exportBtn">Exportar datos</button>
+        <label class="secondary file-label">Importar datos
+          <input type="file" id="importInput" accept="application/json" hidden />
+        </label>
+        <button type="button" class="danger-btn" id="clearBtn">Borrar todos los datos</button>
+      </div>
+
+      <div class="sheet-actions">
+        <button class="primary" value="default">Guardar ajustes</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="listDialog">
+    <div class="sheet">
+      <div class="sheet-head">
+        <h3 id="listDialogTitle">Movimientos</h3>
+        <button class="icon-btn" id="closeListDialog">✕</button>
+      </div>
+      <div id="fullMovementList" class="movement-list"></div>
+    </div>
+  </dialog>
+
+  <dialog id="statsDialog">
+    <div class="sheet">
+      <div class="sheet-head">
+        <h3>Estadísticas</h3>
+        <button class="icon-btn" id="closeStatsDialog">✕</button>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-card"><span>Gasto medio/día</span><strong id="avgDaily">0 €</strong></div>
+        <div class="stat-card"><span>Mayor categoría</span><strong id="topCategory">—</strong></div>
+        <div class="stat-card"><span>Movimientos</span><strong id="movementCount">0</strong></div>
+        <div class="stat-card"><span>Ingresos del mes</span><strong id="incomeTotal">0 €</strong></div>
+      </div>
+      <div id="statsBars" class="stats-bars"></div>
+    </div>
+  </dialog>
+
+  <script src="app.js"></script>
+</body>
+</html>
