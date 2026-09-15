@@ -40,6 +40,10 @@
             <div class="value danger" id="spentValue">0 €</div>
           </div>
           <div>
+            <div class="label">Ahorrado</div>
+            <div class="value savings" id="savedValue">0 €</div>
+          </div>
+          <div>
             <div class="label">Disponible</div>
             <div class="value success" id="remainingValue">0 €</div>
           </div>
@@ -54,9 +58,10 @@
         </div>
       </section>
 
-      <section class="quick-actions">
-        <button class="primary" id="addExpenseBtn">＋ Añadir gasto</button>
+      <section class="quick-actions three">
+        <button class="primary" id="addExpenseBtn">＋ Gasto</button>
         <button class="secondary" id="addIncomeBtn">＋ Ingreso</button>
+        <button class="secondary savings-btn" id="addSavingBtn">＋ Ahorro</button>
       </section>
 
       <section class="card">
@@ -73,6 +78,14 @@
           <button class="text-btn" id="viewAllBtn">Ver todos</button>
         </div>
         <div id="recentList" class="movement-list"></div>
+      </section>
+
+      <section class="card">
+        <div class="section-head">
+          <h2>Ahorro</h2>
+          <span class="muted" id="savingsMonthTotal">0 € este mes</span>
+        </div>
+        <div id="savingsList" class="movement-list"></div>
       </section>
 
       <section class="card">
@@ -158,6 +171,31 @@
     </form>
   </dialog>
 
+  <dialog id="savingDialog">
+    <form method="dialog" id="savingForm" class="sheet">
+      <div class="sheet-head">
+        <h3>Añadir ahorro</h3>
+        <button class="icon-btn" value="cancel">✕</button>
+      </div>
+      <label>Importe ahorrado
+        <input type="number" id="savingAmount" step="0.01" min="0" inputmode="decimal" required />
+      </label>
+      <label>Concepto
+        <input type="text" id="savingName" placeholder="Ej. Cuenta ahorro" value="Ahorro mensual" required />
+      </label>
+      <label>Fecha
+        <input type="date" id="savingDate" required />
+      </label>
+      <label>Notas
+        <textarea id="savingNotes" rows="2" placeholder="Opcional"></textarea>
+      </label>
+      <div class="sheet-actions">
+        <button class="secondary" value="cancel">Cancelar</button>
+        <button class="primary" value="default">Guardar</button>
+      </div>
+    </form>
+  </dialog>
+
   <dialog id="recurringDialog">
     <form method="dialog" id="recurringForm" class="sheet">
       <div class="sheet-head">
@@ -233,6 +271,6 @@
     </div>
   </dialog>
 
-  <script src="app.js?v=3"></script>
+  <script src="app.js?v=4"></script>
 </body>
 </html>

@@ -17,9 +17,15 @@ let state = JSON.parse(localStorage.getItem('misGastosData') || 'null') || {
   budget: 1200,
   expenses: [],
   incomes: [],
+  savings: [],
   recurring: [],
   categories: DEFAULT_CATEGORIES
 };
+state.expenses = Array.isArray(state.expenses) ? state.expenses : [];
+state.incomes = Array.isArray(state.incomes) ? state.incomes : [];
+state.savings = Array.isArray(state.savings) ? state.savings : [];
+state.recurring = Array.isArray(state.recurring) ? state.recurring : [];
+state.categories = Array.isArray(state.categories) && state.categories.length ? state.categories : DEFAULT_CATEGORIES;
 let current = new Date();
 current.setDate(1);
 
@@ -63,18 +69,23 @@ function render(){
   const recurringExpenses = recurringForMonth(current);
   const ex = [...manualExpenses, ...recurringExpenses];
   const inc = state.incomes.filter(x=>sameMonth(x.date));
+  const sav = state.savings.filter(x=>sameMonth(x.date));
 
   const spent = ex.reduce((a,b)=>a+Number(b.amount||0),0);
   const income = inc.reduce((a,b)=>a+Number(b.amount||0),0);
-  const remaining = Number(state.budget||0) + income - spent;
+  const saved = sav.reduce((a,b)=>a+Number(b.amount||0),0);
+
+  // El ahorro reduce el disponible, pero NO forma parte del gasto.
+  const remaining = Number(state.budget||0) + income - spent - saved;
 
   budgetValue.textContent = fmt.format(Number(state.budget||0));
   spentValue.textContent = fmt.format(spent);
+  savedValue.textContent = fmt.format(saved);
   remainingValue.textContent = fmt.format(remaining);
 
   const pct = Number(state.budget)>0 ? Math.min(100,Math.round(spent/Number(state.budget)*100)) : 0;
   progressBar.style.width = pct+'%';
-  progressText.textContent = `${pct}% utilizado`;
+  progressText.textContent = `${pct}% utilizado en gastos`;
   dailyBudget.textContent = `${fmt.format(Math.max(0,remaining)/daysRemaining(current))}/día`;
 
   const grouped = {};
@@ -90,10 +101,16 @@ function render(){
   const movements = [
     ...manualExpenses.map(x=>({...x,type:'expense'})),
     ...recurringExpenses,
-    ...inc.map(x=>({...x,type:'income'}))
+    ...inc.map(x=>({...x,type:'income'})),
+    ...sav.map(x=>({...x,type:'saving'}))
   ].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,5);
 
   recentList.innerHTML = movements.length ? movements.map(movementHTML).join('') : `<div class="empty">No hay movimientos este mes.</div>`;
+
+  savingsMonthTotal.textContent = `${fmt.format(saved)} este mes`;
+  savingsList.innerHTML = sav.length
+    ? sav.sort((a,b)=>b.date.localeCompare(a.date)).map(x=>movementHTML({...x,type:'saving'})).join('')
+    : `<div class="empty">Todavía no has registrado ahorro este mes.</div>`;
 
   recurringList.innerHTML = state.recurring.length ? state.recurring.map((r,i)=>{
     const c=catMeta(r.category);
@@ -105,6 +122,7 @@ function render(){
 
 function movementHTML(m){
   if(m.type==='income') return `<div class="movement"><div class="movement-icon">💵</div><div><div class="movement-title">${escapeHtml(m.name)}</div><div class="movement-meta">${formatDate(m.date)} · Ingreso</div></div><div class="movement-amount income-amount">+${fmt.format(m.amount)}</div></div>`;
+  if(m.type==='saving') return `<div class="movement"><div class="movement-icon">💰</div><div><div class="movement-title">${escapeHtml(m.name)}</div><div class="movement-meta">${formatDate(m.date)} · Ahorro</div></div><div class="movement-amount saving-amount">${fmt.format(m.amount)}</div></div>`;
   const c=catMeta(m.category);
   return `<div class="movement"><div class="movement-icon">${c.icon}</div><div><div class="movement-title">${escapeHtml(m.name)}</div><div class="movement-meta">${formatDate(m.date)} · ${escapeHtml(m.category)}${m.recurring?' · Recurrente':''}</div></div><div class="movement-amount">-${fmt.format(m.amount)}</div></div>`;
 }
@@ -120,6 +138,7 @@ nextMonth.onclick=()=>{current.setMonth(current.getMonth()+1);render();}
 
 addExpenseBtn.onclick=()=>{expenseForm.reset();expenseDate.value=todayISO();expenseDialog.showModal();}
 addIncomeBtn.onclick=()=>{incomeForm.reset();incomeDate.value=todayISO();incomeDialog.showModal();}
+addSavingBtn.onclick=()=>{savingForm.reset();savingName.value='Ahorro mensual';savingDate.value=todayISO();savingDialog.showModal();}
 addRecurringBtn.onclick=()=>{recurringForm.reset();recurringDay.value=1;recurringDialog.showModal();}
 settingsBtn.onclick=openSettings;
 
@@ -145,6 +164,21 @@ incomeForm.addEventListener('submit',e=>{
     amount:Number(incomeAmount.value), name:incomeName.value.trim(), date:incomeDate.value
   });
   incomeDialog.close(); save();
+});
+
+savingForm.addEventListener('submit',e=>{
+  if(e.submitter?.value==='cancel') return;
+  e.preventDefault();
+  if(!savingForm.reportValidity()) return;
+  state.savings.push({
+    id:crypto.randomUUID?.()||String(Date.now()),
+    amount:Number(savingAmount.value),
+    name:savingName.value.trim(),
+    date:savingDate.value,
+    notes:savingNotes.value.trim()
+  });
+  savingDialog.close();
+  save();
 });
 
 recurringForm.addEventListener('submit',e=>{
@@ -175,7 +209,8 @@ function showAllMovements(){
   const all=[
     ...state.expenses.filter(x=>sameMonth(x.date)).map(x=>({...x,type:'expense'})),
     ...recurringForMonth(current),
-    ...state.incomes.filter(x=>sameMonth(x.date)).map(x=>({...x,type:'income'}))
+    ...state.incomes.filter(x=>sameMonth(x.date)).map(x=>({...x,type:'income'})),
+    ...state.savings.filter(x=>sameMonth(x.date)).map(x=>({...x,type:'saving'}))
   ].sort((a,b)=>b.date.localeCompare(a.date));
   listDialogTitle.textContent=`Movimientos · ${monthLabel(current)}`;
   fullMovementList.innerHTML=all.length?all.map(movementHTML).join(''):`<div class="empty">No hay movimientos.</div>`;
@@ -211,13 +246,19 @@ importInput.onchange=async(e)=>{
   try{
     const data=JSON.parse(await file.text());
     if(!data || !Array.isArray(data.expenses)) throw new Error();
-    state=data; save(); alert('Datos importados correctamente.');
+    state=data;
+    state.expenses=Array.isArray(state.expenses)?state.expenses:[];
+    state.incomes=Array.isArray(state.incomes)?state.incomes:[];
+    state.savings=Array.isArray(state.savings)?state.savings:[];
+    state.recurring=Array.isArray(state.recurring)?state.recurring:[];
+    state.categories=Array.isArray(state.categories)&&state.categories.length?state.categories:DEFAULT_CATEGORIES;
+    save(); alert('Datos importados correctamente.');
   }catch{ alert('El archivo no es válido.'); }
 }
 clearBtn.onclick=()=>{
   if(confirm('¿Seguro que quieres borrar todos los datos?')){
     localStorage.removeItem('misGastosData');
-    state={budget:1200,expenses:[],incomes:[],recurring:[],categories:DEFAULT_CATEGORIES};
+    state={budget:1200,expenses:[],incomes:[],savings:[],recurring:[],categories:DEFAULT_CATEGORIES};
     settingsDialog.close(); save();
   }
 }
