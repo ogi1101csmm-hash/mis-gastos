@@ -36,9 +36,31 @@ function daysRemaining(d){
 }
 function catMeta(name){ return state.categories.find(c=>c.name===name) || {name,icon:'📦'}; }
 
+function recurringForMonth(d=current){
+  const y=d.getFullYear(), m=d.getMonth();
+  const lastDay=new Date(y,m+1,0).getDate();
+  return state.recurring.map(r=>{
+    const day=Math.min(Number(r.day)||1,lastDay);
+    const date=`${y}-${String(m+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+    return {
+      id:`recurring-${r.id || r.name}-${monthKey(d)}`,
+      amount:Number(r.amount),
+      name:r.name,
+      category:r.category,
+      date,
+      method:'Recurrente',
+      notes:'Gasto recurrente',
+      type:'expense',
+      recurring:true
+    };
+  });
+}
+
 function render(){
   document.getElementById('monthTitle').textContent = monthLabel(current);
-  const ex = state.expenses.filter(x=>sameMonth(x.date));
+  const manualEx = state.expenses.filter(x=>sameMonth(x.date));
+  const recurringEx = recurringForMonth(current);
+  const ex = [...manualEx, ...recurringEx];
   const inc = state.incomes.filter(x=>sameMonth(x.date));
   const spent = ex.reduce((a,b)=>a+Number(b.amount),0);
   const income = inc.reduce((a,b)=>a+Number(b.amount),0);
@@ -78,7 +100,7 @@ function render(){
 function movementHTML(m){
   if(m.type==='income') return `<div class="movement"><div class="movement-icon">💵</div><div><div class="movement-title">${escapeHtml(m.name)}</div><div class="movement-meta">${formatDate(m.date)} · Ingreso</div></div><div class="movement-amount income-amount">+${fmt.format(m.amount)}</div></div>`;
   const c=catMeta(m.category);
-  return `<div class="movement"><div class="movement-icon">${c.icon}</div><div><div class="movement-title">${escapeHtml(m.name)}</div><div class="movement-meta">${formatDate(m.date)} · ${escapeHtml(m.category)}</div></div><div class="movement-amount">-${fmt.format(m.amount)}</div></div>`;
+  return `<div class="movement"><div class="movement-icon">${c.icon}</div><div><div class="movement-title">${escapeHtml(m.name)}</div><div class="movement-meta">${formatDate(m.date)} · ${escapeHtml(m.category)}${m.recurring?' · Recurrente':''}</div></div><div class="movement-amount">-${fmt.format(m.amount)}</div></div>`;
 }
 function formatDate(s){ return new Date(s+'T12:00:00').toLocaleDateString('es-ES',{day:'2-digit',month:'short'}); }
 function escapeHtml(s){ return String(s).replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
@@ -144,8 +166,11 @@ settingsForm.addEventListener('submit',e=>{
 viewAllBtn.onclick=showAllMovements;
 document.querySelector('[data-view="movements"]').onclick=showAllMovements;
 function showAllMovements(){
-  const all=[...state.expenses.map(x=>({...x,type:'expense'})),...state.incomes.map(x=>({...x,type:'income'}))]
-    .filter(x=>sameMonth(x.date)).sort((a,b)=>b.date.localeCompare(a.date));
+  const all=[
+    ...state.expenses.filter(x=>sameMonth(x.date)).map(x=>({...x,type:'expense'})),
+    ...recurringForMonth(current),
+    ...state.incomes.filter(x=>sameMonth(x.date)).map(x=>({...x,type:'income'}))
+  ].sort((a,b)=>b.date.localeCompare(a.date));
   listDialogTitle.textContent=`Movimientos · ${monthLabel(current)}`;
   fullMovementList.innerHTML=all.length?all.map(movementHTML).join(''):`<div class="empty">No hay movimientos.</div>`;
   listDialog.showModal();
@@ -154,7 +179,7 @@ closeListDialog.onclick=()=>listDialog.close();
 
 document.querySelector('[data-view="stats"]').onclick=showStats;
 function showStats(){
-  const ex=state.expenses.filter(x=>sameMonth(x.date));
+  const ex=[...state.expenses.filter(x=>sameMonth(x.date)), ...recurringForMonth(current)];
   const inc=state.incomes.filter(x=>sameMonth(x.date));
   const spent=ex.reduce((a,b)=>a+Number(b.amount),0);
   avgDaily.textContent=fmt.format(spent/daysInMonth(current));
