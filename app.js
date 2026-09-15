@@ -58,40 +58,46 @@ function recurringForMonth(d=current){
 
 function render(){
   document.getElementById('monthTitle').textContent = monthLabel(current);
-  const manualEx = state.expenses.filter(x=>sameMonth(x.date));
-  const recurringEx = recurringForMonth(current);
-  const ex = [...manualEx, ...recurringEx];
-  const inc = state.incomes.filter(x=>sameMonth(x.date));
-  const spent = ex.reduce((a,b)=>a+Number(b.amount),0);
-  const income = inc.reduce((a,b)=>a+Number(b.amount),0);
-  const remaining = Number(state.budget) + income - spent;
 
-  budgetValue.textContent = fmt.format(state.budget);
+  const manualExpenses = state.expenses.filter(x=>sameMonth(x.date));
+  const recurringExpenses = recurringForMonth(current);
+  const ex = [...manualExpenses, ...recurringExpenses];
+  const inc = state.incomes.filter(x=>sameMonth(x.date));
+
+  const spent = ex.reduce((a,b)=>a+Number(b.amount||0),0);
+  const income = inc.reduce((a,b)=>a+Number(b.amount||0),0);
+  const remaining = Number(state.budget||0) + income - spent;
+
+  budgetValue.textContent = fmt.format(Number(state.budget||0));
   spentValue.textContent = fmt.format(spent);
   remainingValue.textContent = fmt.format(remaining);
-  const pct = state.budget>0 ? Math.min(100, Math.round(spent/state.budget*100)) : 0;
+
+  const pct = Number(state.budget)>0 ? Math.min(100,Math.round(spent/Number(state.budget)*100)) : 0;
   progressBar.style.width = pct+'%';
   progressText.textContent = `${pct}% utilizado`;
   dailyBudget.textContent = `${fmt.format(Math.max(0,remaining)/daysRemaining(current))}/día`;
 
   const grouped = {};
-  ex.forEach(x => grouped[x.category] = (grouped[x.category]||0) + Number(x.amount));
+  ex.forEach(x=>grouped[x.category]=(grouped[x.category]||0)+Number(x.amount||0));
   const cats = Object.entries(grouped).sort((a,b)=>b[1]-a[1]);
   categoryCount.textContent = `${cats.length} categorías`;
   categoryList.innerHTML = cats.length ? cats.map(([name,amount])=>{
-    const c=catMeta(name); const p=spent?Math.round(amount/spent*100):0;
+    const c=catMeta(name);
+    const p=spent?Math.round(amount/spent*100):0;
     return `<div class="cat-row"><div class="cat-icon">${c.icon}</div><div><div class="cat-name">${escapeHtml(name)}</div><div class="cat-sub">${p}% del gasto</div></div><div class="cat-amount">${fmt.format(amount)}</div></div>`;
   }).join('') : `<div class="empty">Todavía no hay gastos este mes.</div>`;
 
   const movements = [
-    ...ex.map(x=>({...x,type:'expense'})),
+    ...manualExpenses.map(x=>({...x,type:'expense'})),
+    ...recurringExpenses,
     ...inc.map(x=>({...x,type:'income'}))
   ].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,5);
+
   recentList.innerHTML = movements.length ? movements.map(movementHTML).join('') : `<div class="empty">No hay movimientos este mes.</div>`;
 
   recurringList.innerHTML = state.recurring.length ? state.recurring.map((r,i)=>{
     const c=catMeta(r.category);
-    return `<div class="movement"><div class="movement-icon">${c.icon}</div><div><div class="movement-title">${escapeHtml(r.name)}</div><div class="movement-meta">Día ${r.day} · ${escapeHtml(r.category)}</div></div><div class="movement-amount">${fmt.format(r.amount)}</div></div>`;
+    return `<div class="movement"><div class="movement-icon">${c.icon}</div><div><div class="movement-title">${escapeHtml(r.name)}</div><div class="movement-meta">Día ${r.day} · ${escapeHtml(r.category)}</div></div><div class="movement-amount">${fmt.format(Number(r.amount||0))}</div></div>`;
   }).join('') : `<div class="empty">No tienes gastos recurrentes configurados.</div>`;
 
   populateSelects();
